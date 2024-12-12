@@ -1,0 +1,10 @@
+streamlit==1.32.0
+langchain==0.1.12
+openai==1.13.3
+python-dotenv==1.0.1
+requests==2.31.0
+typing-extensions==4.10.0
+tenacity==8.2.3
+pydantic==2.6.3
+aiohttp==3.9.3
+tiktoken==0.6.0
