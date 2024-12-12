@@ -1,6 +1,6 @@
 # HSK 4 Chinese Language Tutor 🎓
 
-![Chinese Tutor Interface](./images/image.png)
+![Chinese Tutor Interface](./image.png)
 
 A Streamlit-based Chinese language learning assistant that uses OpenAI's GPT-4 to provide interactive Chinese language tutoring at the HSK 4 level.
 
