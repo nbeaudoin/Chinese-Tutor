@@ -1,5 +1,4 @@
 # Created by Claude Sonnet 3.5 (author: Nicholas Beaudoin)
-
 import streamlit as st
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
@@ -31,50 +30,25 @@ HSK4_REFERENCE = {
     ]
 }
 
-# Enhanced system prompt with more detailed instructions
-SYSTEM_PROMPT = """You are an expert Chinese language tutor specializing in HSK 4 level instruction.
+# Enhanced system prompt for the tutor
+SYSTEM_PROMPT = """You are a helpful Chinese language tutor specifically teaching at the HSK 4 level. 
+You should:
+1. Respond to student messages in Chinese (using HSK 4 level vocabulary and grammar)
+2. Provide pinyin for all Chinese characters
+3. Provide English translations
+4. If the student writes in Chinese, correct any mistakes they make
+5. Use appropriate HSK 4 vocabulary and grammar patterns in your responses
+6. Be encouraging and supportive
 
-Core responsibilities:
-1. ALWAYS respond in this JSON format:
+Format your responses as JSON with the following structure:
 {
     "chinese": "Chinese text using HSK 4 vocabulary",
-    "pinyin": "Pinyin with correct tones",
+    "pinyin": "Pinyin with tones",
     "english": "English translation",
     "corrections": "Corrections for student mistakes (if any)",
     "explanation": "Grammar and vocabulary explanations",
     "tips": "Learning suggestions or mnemonics (optional)"
-}
-
-Teaching guidelines:
-1. Language level:
-   - Use HSK 4 vocabulary and grammar patterns
-   - Gradually introduce new words with proper context
-   - Keep sentences at intermediate complexity
-
-2. Corrections:
-   - Identify and correct any grammar mistakes
-   - Point out incorrect character usage
-   - Explain proper word choice
-   - Correct tone errors in spoken examples
-
-3. Explanations:
-   - Break down complex grammar patterns
-   - Explain idiomatic expressions
-   - Provide context for vocabulary usage
-   - Include cultural notes when relevant
-
-4. Learning support:
-   - Offer memorization tips
-   - Suggest practice exercises
-   - Provide example sentences
-   - Use encouraging language
-
-Remember to:
-- Keep responses clear and structured
-- Be patient and encouraging
-- Provide practical examples
-- Focus on common usage patterns
-"""
+}"""
 
 class TokenTracker:
     """Custom token tracking class with detailed statistics."""
@@ -134,39 +108,13 @@ class TokenTracker:
 def validate_system_prompt() -> bool:
     """Validate the system prompt structure and content."""
     try:
-        required_sections = ["Core responsibilities", "Teaching guidelines", "Remember to"]
-        for section in required_sections:
-            if section not in SYSTEM_PROMPT:
-                st.error(f"Missing required section in system prompt: {section}")
-                return False
-        
-        # Check if JSON format example is present
         if "{" not in SYSTEM_PROMPT or "}" not in SYSTEM_PROMPT:
             st.error("Missing JSON format example in system prompt")
             return False
-        
         return True
     except Exception as e:
         st.error(f"Error validating system prompt: {str(e)}")
         return False
-
-@contextmanager
-def safe_openai_callback():
-    """Context manager for safely handling OpenAI callbacks with error tracking."""
-    callback = OpenAICallbackHandler()
-    try:
-        yield callback
-    except Exception as e:
-        st.error(f"Error tracking token usage: {str(e)}")
-        st.error(traceback.format_exc())
-        yield None
-    finally:
-        if hasattr(callback, 'total_tokens'):
-            st.session_state.token_tracker.add_interaction(
-                callback.prompt_tokens,
-                callback.completion_tokens,
-                callback.total_cost
-            )
 
 def initialize_session_state():
     """Initialize session state variables with enhanced tracking."""
@@ -237,7 +185,7 @@ def format_message(message_dict: Dict[str, str]) -> str:
         return "Error displaying message. Please try again."
 
 def setup_openai() -> Optional[ChatOpenAI]:
-    """Setup OpenAI API key and model with enhanced error handling."""
+    """Setup OpenAI API key and model with error handling."""
     try:
         api_key = os.getenv('OPENAI_API_KEY')
         if not api_key:
@@ -250,14 +198,7 @@ def setup_openai() -> Optional[ChatOpenAI]:
             model_name="gpt-4",
             openai_api_key=api_key
         )
-        
-        # Test the connection
-        try:
-            llm.invoke("Test connection")
-            return llm
-        except Exception as e:
-            st.error(f"Failed to connect to OpenAI API: {str(e)}")
-            return None
+        return llm
             
     except Exception as e:
         st.error(f"Error initializing OpenAI client: {str(e)}")
@@ -333,22 +274,21 @@ def main():
             with st.chat_message("assistant"):
                 try:
                     with st.spinner("Thinking..."):
-                        with safe_openai_callback() as callback:
-                            response = llm.invoke(
-                                [message for message in st.session_state.messages],
-                                callbacks=[callback] if callback else []
-                            )
+                        callback = OpenAICallbackHandler()
+                        response = llm.invoke(
+                            [message for message in st.session_state.messages]
+                        )
+                        
+                        response_dict = parse_response(response.content)
+                        st.markdown(format_message(response_dict))
+                        st.session_state.messages.append(AIMessage(content=response.content))
                             
-                            response_dict = parse_response(response.content)
-                            st.markdown(format_message(response_dict))
-                            st.session_state.messages.append(AIMessage(content=response.content))
-                            
-                            # Record successful interaction
-                            st.session_state.interaction_history.append({
-                                'timestamp': datetime.now(),
-                                'prompt': prompt,
-                                'response': response_dict
-                            })
+                        # Record successful interaction
+                        st.session_state.interaction_history.append({
+                            'timestamp': datetime.now(),
+                            'prompt': prompt,
+                            'response': response_dict
+                        })
                             
                 except Exception as e:
                     st.error(f"Error generating response: {str(e)}")
