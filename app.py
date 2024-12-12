@@ -196,9 +196,17 @@ def setup_openai() -> Optional[ChatOpenAI]:
         llm = ChatOpenAI(
             temperature=0.7,
             model_name="gpt-4",
-            openai_api_key=api_key
+            openai_api_key=api_key,
+            # Remove any proxy settings
         )
         return llm
+            
+    except Exception as e:
+        st.error(f"Error initializing OpenAI client: {str(e)}")
+        st.error(traceback.format_exc())
+        st.stop()
+        return None
+        
             
     except Exception as e:
         st.error(f"Error initializing OpenAI client: {str(e)}")
